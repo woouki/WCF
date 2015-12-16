@@ -141,26 +141,15 @@ final class User extends DatabaseObject implements IRouteController, IUserConten
 		$isValid = false;
 		$rebuild = false;
 		
-		// check if password is a valid bcrypt hash
-		if (PasswordUtil::isBlowfish($this->password)) {
-			if (PasswordUtil::isDifferentBlowfish($this->password)) {
-				$rebuild = true;
-			}
+		if (PasswordUtil::checkPassword($this->username, $password, $this->password)) {
+			$isValid = true;
 			
-			// password is correct
-			if (PasswordUtil::secureCompare($this->password, PasswordUtil::getDoubleSaltedHash($password, $this->password))) {
-				$isValid = true;
-			}
-		}
-		else {
-			// different encryption type
-			if (PasswordUtil::checkPassword($this->username, $password, $this->password)) {
-				$isValid = true;
+			if (PasswordUtil::needsRehash($this->password)) {
 				$rebuild = true;
 			}
 		}
 		
-		// create new password hash, either different encryption or different blowfish cost factor
+		// Rehash the password.
 		if ($rebuild && $isValid) {
 			$userEditor = new UserEditor($this);
 			$userEditor->update([
