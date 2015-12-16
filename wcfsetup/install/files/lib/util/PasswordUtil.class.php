@@ -2,11 +2,12 @@
 namespace wcf\util;
 use wcf\system\exception\SystemException;
 use wcf\system\Regex;
+use wcf\util\exception\CryptoException;
 
 /**
  * Provides functions to compute password hashes.
  * 
- * @author	Alexander Ebert
+ * @author	Tim Duesterhus, Alexander Ebert
  * @copyright	2001-2015 WoltLab GmbH
  * @license	GNU Lesser General Public License <http://opensource.org/licenses/lgpl-license.php>
  * @package	com.woltlab.wcf
@@ -43,25 +44,29 @@ final class PasswordUtil {
 		'vb5',		// vBulletin 5.x
 		'wbb2',		// WoltLab Burning Board 2.x
 		'wcf1',		// WoltLab Community Framework 1.x
-		'wcf2',		// WoltLab Community Framework 2.x
+		'wcf2',		// WoltLab Community Framework 2.0 / 2.1
+		'std',		// password_hash / WoltLab Community Framework 2.2+
 		'xf1',		// XenForo 1.0 / 1.1
 		'xf12',		// XenForo 1.2+
 		'joomla1',	// Joomla 1.x
 		'joomla2',	// Joomla 2.x
 		'joomla3',	// Joomla 3.x
 		'cryptMD5',
+		'crypt',
 		'invalid',	// Never going to match anything
 	);
 	
 	/**
 	 * blowfish cost factor
 	 * @var	string
+	 * @deprecated 2.2
 	 */
 	const BCRYPT_COST = '08';
 	
 	/**
 	 * blowfish encryption type
 	 * @var	string
+	 * @deprecated 2.2
 	 */
 	const BCRYPT_TYPE = '2a';
 	
@@ -84,20 +89,14 @@ final class PasswordUtil {
 	}
 	
 	/**
-	 * Returns true if given hash looks like a valid bcrypt hash.
-	 * 
-	 * @param	string		$hash
-	 * @return	boolean
+	 * @deprecated 2.2 - Use PasswordUtil::checkPassword().
 	 */
 	public static function isBlowfish($hash) {
 		return (Regex::compile('^\$2[afxy]\$')->match($hash) ? true : false);
 	}
 	
 	/**
-	 * Returns true if given bcrypt hash uses a different cost factor and should be re-computed.
-	 * 
-	 * @param	string		$hash
-	 * @return	boolean
+	 * @deprecated 2.2 - Use PasswordUtil::needsRehash().
 	 */
 	public static function isDifferentBlowfish($hash) {
 		$currentCost = intval(self::BCRYPT_COST);
@@ -120,6 +119,10 @@ final class PasswordUtil {
 	 * @throws	SystemException
 	 */
 	public static function checkPassword($username, $password, $dbHash) {
+		if (PasswordUtil::isBlowfish($dbHash)) {
+			$dbHash = 'crypt:'.$dbHash;
+		}
+		
 		$type = self::detectEncryption($dbHash);
 		if ($type === 'unknown') {
 			throw new SystemException("Unable to determine password encryption");
@@ -149,6 +152,51 @@ final class PasswordUtil {
 	}
 	
 	/**
+	 * Returns false iff the type of the hash matches the one of PasswordUtil::getHash(),
+	 * returns true otherwise.
+	 * 
+	 * @param	string		$dbHash
+	 * @return	boolean
+	 */
+	public static function needsRehash($dbHash) {
+		if (PasswordUtil::isBlowfish($dbHash)) {
+			$dbHash = 'crypt:'.$dbHash;
+		}
+		
+		$type = self::detectEncryption($dbHash);
+		if ($type === 'unknown') {
+			throw new \InvalidArgumentException("Unable to determine password encryption");
+		}
+		
+		if ($type !== 'std') return true;
+		
+		// drop type from hash
+		$dbHash = substr($dbHash, strlen($type) + 1);
+		
+		return password_needs_rehash($dbHash, PASSWORD_BCRYPT, [
+			'cost' => 10
+		]);
+	}
+	
+	/**
+	 * Hashes the given password with the most algorithm that is deemed most secure.
+	 * 
+	 * @param	string		$password
+	 * @return	string
+	 */
+	public static function getHash($password) {
+		$hash = password_hash($password, PASSWORD_BCRYPT, [
+			'cost' => 10
+		]);
+		
+		if ($hash === false) {
+			throw new CryptoException('Unable to password_hash().');
+		}
+		
+		return 'std:'.$hash;
+	}
+	
+	/**
 	 * Returns encryption type if possible.
 	 * 
 	 * @param	string		$hash
@@ -166,11 +214,7 @@ final class PasswordUtil {
 	}
 	
 	/**
-	 * Returns a double salted bcrypt hash.
-	 * 
-	 * @param	string		$password
-	 * @param	string		$salt
-	 * @return	string
+	 * @deprecated	2.2 - Use PasswordUtil::getHash()
 	 */
 	public static function getDoubleSaltedHash($password, $salt = null) {
 		if ($salt === null) {
@@ -181,11 +225,7 @@ final class PasswordUtil {
 	}
 	
 	/**
-	 * Returns a simple salted bcrypt hash.
-	 * 
-	 * @param	string		$password
-	 * @param	string		$salt
-	 * @return	string
+	 * @deprecated	2.2 - Use PasswordUtil::getHash()
 	 */
 	public static function getSaltedHash($password, $salt = null) {
 		if ($salt === null) {
@@ -196,9 +236,7 @@ final class PasswordUtil {
 	}
 	
 	/**
-	 * Returns a random blowfish-compatible salt.
-	 * 
-	 * @return	string
+	 * @deprecated	2.2 - Manually specifying the salt is deprecated.
 	 */
 	public static function getRandomSalt() {
 		$salt = '';
@@ -229,7 +267,7 @@ final class PasswordUtil {
 	
 	/**
 	 * @see	\wcf\util\CryptoUtil::secureCompare()
-	 * @deprecated	Use \wcf\util\CryptoUtil::secureCompare()
+	 * @deprecated	2.2 - Use \wcf\util\CryptoUtil::secureCompare()
 	 */
 	public static function secureCompare($hash1, $hash2) {
 		return CryptoUtil::secureCompare($hash1, $hash2);
@@ -270,10 +308,7 @@ final class PasswordUtil {
 	}
 	
 	/**
-	 * Returns a blowfish salt, e.g. $2a$07$usesomesillystringforsalt$
-	 * 
-	 * @param	string		$salt
-	 * @return	string
+	 * @deprecated	2.2 - Manually specifying the salt is deprecated.
 	 */
 	protected static function getSalt($salt) {
 		$salt = mb_substr($salt, 0, 22);
@@ -575,7 +610,7 @@ final class PasswordUtil {
 	}
 	
 	/**
-	 * Validates the password hash for WoltLab Community Framework 2.x (wcf2).
+	 * Validates the password hash for WoltLab Community Framework 2.0 / 2.1 (wcf2).
 	 * 
 	 * @param	string		$username
 	 * @param	string		$password
@@ -585,6 +620,19 @@ final class PasswordUtil {
 	 */
 	protected static function wcf2($username, $password, $salt, $dbHash) {
 		return self::secureCompare($dbHash, self::getDoubleSaltedHash($password, $salt));
+	}
+	
+	/**
+	 * Validates the password hash for the PHP standard library 'password_hash'.
+	 * 
+	 * @param	string		$username
+	 * @param	string		$password
+	 * @param	string		$salt
+	 * @param	string		$dbHash
+	 * @return	boolean
+	 */
+	protected static function std($username, $password, $salt, $dbHash) {
+		return password_verify($password, $dbHash);
 	}
 	
 	/**
@@ -614,11 +662,7 @@ final class PasswordUtil {
 	 * @return	boolean
 	 */
 	protected static function xf12($username, $password, $salt, $dbHash) {
-		if (self::secureCompare($dbHash, self::getSaltedHash($password, $dbHash))) {
-			return true;
-		}
-		
-		return false;
+		return self::crypt($username, $password, $salt, $dbHash);
 	}
 	
 	/**
@@ -665,7 +709,14 @@ final class PasswordUtil {
 	}
 	
 	/**
-	 * Validates the password hash for MD5 mode of crypt()
+	 * @see	PasswordUtil::crypt()
+	 */
+	protected static function cryptMD5($username, $password, $salt, $dbHash) {
+		return self::crypt($username, $password, $salt, $dbHash);
+	}
+	
+	/**
+	 * Validates the password hash against crypt().
 	 * 
 	 * @param	string		$username
 	 * @param	string		$password
@@ -673,8 +724,14 @@ final class PasswordUtil {
 	 * @param	string		$dbHash
 	 * @return	boolean
 	 */
-	protected static function cryptMD5($username, $password, $salt, $dbHash) {
-		if (self::secureCompare($dbHash, self::getSaltedHash($password, $dbHash))) {
+	protected static function crypt($username, $password, $salt, $dbHash) {
+		if (self::secureCompare($dbHash, $tmp = crypt($password, $dbHash))) {
+			// single salted hash
+			return true;
+		}
+
+		if (self::secureCompare($dbHash, crypt($tmp, $dbHash))) {
+			// double salted hash (WCF 2.0 / 2.1)
 			return true;
 		}
 		
