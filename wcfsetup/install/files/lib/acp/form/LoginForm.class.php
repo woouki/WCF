@@ -1,5 +1,6 @@
 <?php
 namespace wcf\acp\form;
+use wcf\data\session\Session;
 use wcf\data\user\authentication\failure\UserAuthenticationFailure;
 use wcf\data\user\authentication\failure\UserAuthenticationFailureAction;
 use wcf\data\user\User;
@@ -226,8 +227,8 @@ class LoginForm extends AbstractCaptchaForm {
 		
 		// get preferred username
 		if (empty($_POST)) {
-			if (isset($_COOKIE[COOKIE_PREFIX.'userID'])) {
-				$user = new User(intval($_COOKIE[COOKIE_PREFIX.'userID']));
+			if (isset($_COOKIE[COOKIE_PREFIX.'cookieHash'])) {
+				$user = new User((new Session($_COOKIE[COOKIE_PREFIX.'cookieHash']))->userID);
 				if ($user->userID) $this->username = $user->username;
 			}
 		}

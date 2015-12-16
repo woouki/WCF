@@ -161,17 +161,10 @@ final class User extends DatabaseObject implements IRouteController, IUserConten
 	}
 	
 	/**
-	 * Returns true if the given password hash from a cookie is the correct password for this user.
-	 * 
-	 * @param	string		$passwordHash
-	 * @return	boolean		password correct
+	 * @deprecated 2.2 - This method always throws, do not use it any more.
 	 */
 	public function checkCookiePassword($passwordHash) {
-		if (PasswordUtil::isBlowfish($this->password) && PasswordUtil::secureCompare($this->password, PasswordUtil::getSaltedHash($passwordHash, $this->password))) {
-			return true;
-		}
-		
-		return false;
+		throw new \BadMethodCallException('User::checkCookiePassword() is deprecated');
 	}
 	
 	/**

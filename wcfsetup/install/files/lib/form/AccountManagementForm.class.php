@@ -5,6 +5,7 @@ use wcf\data\user\UserAction;
 use wcf\system\exception\UserInputException;
 use wcf\system\mail\Mail;
 use wcf\system\menu\user\UserMenu;
+use wcf\system\user\authentication\DefaultUserAuthentication;
 use wcf\system\WCF;
 use wcf\util\HeaderUtil;
 use wcf\util\PasswordUtil;
@@ -440,11 +441,10 @@ class AccountManagementForm extends AbstractForm {
 		$this->objectAction->executeAction();
 		
 		// update cookie
-		if (isset($_COOKIE[COOKIE_PREFIX.'password']) && isset($updateParameters['password'])) {
+		if (isset($_COOKIE[COOKIE_PREFIX.'autologin']) && isset($updateParameters['password'])) {
 			// reload user
 			$user = new User(WCF::getUser()->userID);
-			
-			HeaderUtil::setCookie('password', PasswordUtil::getSaltedHash($updateParameters['password'], $user->password), TIME_NOW + 365 * 24 * 3600);
+			DefaultUserAuthentication::getInstance()->storeAccessData($user, $user->username, $updateParameters['password']);
 		}
 		
 		$this->saved();
