@@ -71,6 +71,21 @@ final class PasswordUtil {
 	const BCRYPT_TYPE = '2a';
 	
 	/**
+	 * Password type to put into password_*.
+	 * @var		int
+	 */
+	const PASSWORD_TYPE = PASSWORD_BCRYPT;
+	
+	/**
+	 * Password settings to put into password_*. This would be a constant,
+	 * but PHP < 5.6 does not support constant arrays.
+	 * @var		mixed[]
+	 */
+	public static $PASSWORD_SETTINGS = [
+		'cost' => 10
+	];
+	
+	/**
 	 * Returns true if given encryption type is supported.
 	 * 
 	 * @param	string		$type
@@ -173,9 +188,7 @@ final class PasswordUtil {
 		// drop type from hash
 		$dbHash = substr($dbHash, strlen($type) + 1);
 		
-		return password_needs_rehash($dbHash, PASSWORD_BCRYPT, [
-			'cost' => 10
-		]);
+		return password_needs_rehash($dbHash, self::PASSWORD_TYPE, self::$PASSWORD_SETTINGS);
 	}
 	
 	/**
@@ -185,9 +198,7 @@ final class PasswordUtil {
 	 * @return	string
 	 */
 	public static function getHash($password) {
-		$hash = password_hash($password, PASSWORD_BCRYPT, [
-			'cost' => 10
-		]);
+		$hash = password_hash($password, self::PASSWORD_TYPE, self::$PASSWORD_SETTINGS);
 		
 		if ($hash === false) {
 			throw new CryptoException('Unable to password_hash().');
