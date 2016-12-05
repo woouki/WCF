@@ -791,6 +791,10 @@ Examples for medium ID detection:
 		<item name="wcf.acp.menu.item.parentItem"><![CDATA[Parent Menu Item]]></item>
 		<item name="wcf.acp.menu.link.other"><![CDATA[Other]]></item>
 		<item name="wcf.acp.menu.item.pageObjectID.error.invalid"><![CDATA[ID is invalid.]]></item>
+		<item name="wcf.acp.menu.showHeader"><![CDATA[Show menu title]]></item>
+		<item name="wcf.acp.menu.visibilityException.hidden"><![CDATA[Choose Where the Menu Will be Explicitly <strong>Hidden</strong>]]></item>
+		<item name="wcf.acp.menu.visibilityException.visible"><![CDATA[Choose Where the Menu Will be Explicitly <strong>Visible</strong>]]></item>
+		<item name="wcf.acp.menu.visibleEverywhere"><![CDATA[Visible everywhere]]></item>
 	</category>
 	
 	<category name="wcf.acp.notice">
